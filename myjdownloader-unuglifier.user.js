@@ -1,5 +1,6 @@
 // ==UserScript==
 // @name         MyJDownloader UnUglifier
+// @name:de      MyJDownloader UnUglifier
 // @namespace    https://github.com/xerexexe/myjdownloader-unuglifier
 // @author       Holger Teichmann
 // @license      MIT
@@ -7,8 +8,9 @@
 // @supportURL   https://github.com/xerexexe/myjdownloader-unuglifier/issues
 // @updateURL    https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
 // @downloadURL  https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
-// @version      1.0
+// @version      1.0.1
 // @description  A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
+// @description:de Eine übersichtlichere MyJDownloader-Oberfläche mit Hell- und Dunkelmodus, anpassbaren Spaltenbreiten und besser lesbaren Download- und Entpackanzeigen.
 // @match        https://my.jdownloader.org/*
 // @grant        GM_addStyle
 // @run-at       document-start
@@ -30,7 +32,7 @@
         return;
     }
 
-    document.documentElement.dataset.mjdUserscriptVersion = '1.0';
+    document.documentElement.dataset.mjdUserscriptVersion = '1.0.1';
 
     const THEME_KEY = 'mjd-layout-theme';
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');

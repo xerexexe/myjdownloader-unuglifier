@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 — 2026-10-03
+
+- Added German name and description metadata for German-language userscript searches.
+- English remains the default; the script name and interface behavior are unchanged.
+
 ## 1.0 — 2026-10-03
 
 First public release of **MyJDownloader UnUglifier**.

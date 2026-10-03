@@ -2,7 +2,7 @@
 
 A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
 
-**Version 1.0 · by Holger Teichmann · MIT License**
+**Version 1.0.1 · by Holger Teichmann · MIT License**
 
 [![Greasy Fork installs](https://img.shields.io/greasyfork/dt/598605?label=Greasy%20Fork%20installs)](https://greasyfork.org/en/scripts/598605-myjdownloader-unuglifier/stats)
 [![GitHub release downloads](https://img.shields.io/github/downloads/xerexexe/myjdownloader-unuglifier/total?label=GitHub%20release%20downloads)](https://github.com/xerexexe/myjdownloader-unuglifier/releases)
@@ -44,7 +44,9 @@ If the upstream page supplies a stale or missing ETA, the script cannot manufact
 
 ## Language
 
-Version 1.0 is not a full translation layer. Existing German and English labels from MyJDownloader remain unchanged. The added status and timing labels are currently German. Changing the theme does not change language settings.
+English remains the default project language. German script-name and description metadata are also provided for discovery in German-language userscript listings; the name stays the same in both languages.
+
+The script is not a full translation layer. Existing German and English labels from MyJDownloader remain unchanged. The added status and timing labels are currently German. Changing the theme does not change language settings.
 
 ## Privacy and safety
 

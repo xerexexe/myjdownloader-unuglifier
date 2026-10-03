@@ -1,10 +1,10 @@
-# MyJDownloader UnUglifier 1.0
+# MyJDownloader UnUglifier 1.0.1
 
-The first public release of a cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
+Added German name and description metadata so the script can appear in German-language userscript searches. English remains the default language and the name is unchanged. No interface or download-handling behavior changed.
 
 ## Install
 
-[Install the userscript](https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js) with Tampermonkey, then reload MyJDownloader.
+[Install the userscript from Greasy Fork](https://greasyfork.org/en/scripts/598605-myjdownloader-unuglifier) with Tampermonkey, then reload MyJDownloader.
 
 Disable earlier development versions before installing this release. The old private 3.x version numbers do not represent newer public releases.
 
