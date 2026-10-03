@@ -1,0 +1,76 @@
+# MyJDownloader UnUglifier
+
+A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
+
+**Version 1.0 · by Holger Teichmann · MIT License**
+
+An unofficial, client-side userscript for [MyJDownloader](https://my.jdownloader.org/). It improves the existing interface rather than replacing JDownloader or changing how downloads are handled.
+
+## Install
+
+1. Use Tampermonkey in your browser.
+2. Disable earlier development versions of this script and overlapping MyJDownloader theme scripts. Do not run both versions together.
+3. [Open the userscript](https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js) and install it in Tampermonkey. Alternatively, copy its full contents into a new userscript and save.
+4. Reload MyJDownloader.
+
+The script matches only `https://my.jdownloader.org/*` and requests only `GM_addStyle`.
+
+## Features
+
+- Light and dark themes with a saved preference and a compact toggle.
+- Responsive download and LinkGrabber columns, with saved manual widths.
+- Drag a column divider to resize it; use arrow keys for fine adjustments. Double-click a divider to return to automatic sizing.
+- Taller, readable table headers and clearer text without dark-mode text shadows.
+- Improved dialogs, account-table alignment and settings layouts.
+- General settings and system information that contain their content instead of overflowing their rows.
+- Download ETA displayed without having to hover.
+- Separate extraction information when the page actually reports extraction activity. A completed download alone is not treated as active extraction.
+- Improved initial loading-screen styling.
+
+## ETA and extraction: important limitations
+
+This script reads the status and timing information already exposed by the web interface. It does not request a more accurate ETA from JDownloader or accelerate backend updates.
+
+If the upstream page supplies a stale or missing ETA, the script cannot manufacture a reliable remaining time. A “running since” value measures elapsed time, not estimated completion. Extraction memory is local display state, not an independent measurement of backend activity.
+
+## Language
+
+Version 1.0 is not a full translation layer. Existing German and English labels from MyJDownloader remain unchanged. The added status and timing labels are currently German. Changing the theme does not change language settings.
+
+## Privacy and safety
+
+- Theme and column preferences are stored in browser storage.
+- Temporary extraction display state is stored in session storage.
+- No additional download-management API calls, telemetry, clipboard access or credential collection are introduced by this script.
+- Your userscript manager may check GitHub for script updates using the metadata URLs.
+- This repository contains the script, documentation and synthetic unit tests—not personal screenshots, account details, device IDs or logs.
+- To undo the customization, disable the script and reload the page. Settings and downloads are not changed by removing it.
+
+## Known limitations
+
+- MyJDownloader uses generated GWT class names; upstream changes can break styling.
+- The dashboard theme shortcut may be misplaced or hidden in narrow windows.
+- The advanced-settings search toolbar can overflow in narrow windows.
+- Browser tests used local reproductions of the observed page structure with example data. They are not a guarantee for every backend state or viewport.
+
+## Tests
+
+With Node.js available, run:
+
+```sh
+node --test
+```
+
+The tests cover early startup, theme-control placement, ETA/status parsing and column-size persistence. Visual layout should additionally be checked on the live site after installation.
+
+## Contributing
+
+Bug reports and improvements are welcome. Include the script version, browser, viewport size, affected page and a short reproduction. Remove names, account details, passwords, device IDs, addresses and other private information from screenshots or logs before posting them.
+
+## License and attribution
+
+Copyright © 2026 Holger Teichmann. Released under the [MIT License](LICENSE).
+
+Keep the copyright and license notices when copying or distributing the script. A visible UI credit is appreciated but is not an additional license requirement.
+
+This project is not affiliated with or endorsed by JDownloader or AppWork. Their names, logos and original interface assets belong to their respective owners; this license covers this project's code and documentation.
