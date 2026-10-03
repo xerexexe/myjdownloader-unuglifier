@@ -43,7 +43,7 @@ Version 1.0 is not a full translation layer. Existing German and English labels 
 - Temporary extraction display state is stored in session storage.
 - No additional download-management API calls, telemetry, clipboard access or credential collection are introduced by this script.
 - Your userscript manager may check GitHub for script updates using the metadata URLs.
-- This repository contains the script, documentation and synthetic unit tests—not personal screenshots, account details, device IDs or logs.
+- This repository contains the script and documentation—not personal screenshots, account details, device IDs or logs.
 - To undo the customization, disable the script and reload the page. Settings and downloads are not changed by removing it.
 
 ## Known limitations
@@ -51,17 +51,7 @@ Version 1.0 is not a full translation layer. Existing German and English labels 
 - MyJDownloader uses generated GWT class names; upstream changes can break styling.
 - The dashboard theme shortcut may be misplaced or hidden in narrow windows.
 - The advanced-settings search toolbar can overflow in narrow windows.
-- Browser tests used local reproductions of the observed page structure with example data. They are not a guarantee for every backend state or viewport.
-
-## Tests
-
-With Node.js available, run:
-
-```sh
-node --test
-```
-
-The tests cover early startup, theme-control placement, ETA/status parsing and column-size persistence. Visual layout should additionally be checked on the live site after installation.
+- Not every backend state or viewport has been verified. Check the layout on the live site after installation.
 
 ## Contributing
 

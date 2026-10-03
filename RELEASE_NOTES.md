@@ -15,6 +15,6 @@ Disable earlier development versions before installing this release. The old pri
 - Account-table alignment fixes.
 - Contained system-information layouts and better-positioned account actions.
 
-Read the README for ETA limitations, language behavior and known responsive edge cases. This release has unit-test coverage and local visual checks; it has not been verified against every live backend state.
+Read the README for ETA limitations, language behavior and known responsive edge cases. This release has not been verified against every live backend state.
 
 Copyright © 2026 Holger Teichmann · MIT License · Unofficial community project.

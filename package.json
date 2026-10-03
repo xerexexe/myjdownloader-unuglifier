@@ -1,8 +1,0 @@
-{
-  "name": "myjdownloader-unuglifier",
-  "private": true,
-  "description": "A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.",
-  "author": "Holger Teichmann",
-  "license": "MIT",
-  "scripts": { "test": "node --test" }
-}
