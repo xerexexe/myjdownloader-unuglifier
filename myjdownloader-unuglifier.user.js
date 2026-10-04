@@ -8,7 +8,7 @@
 // @supportURL   https://github.com/xerexexe/myjdownloader-unuglifier/issues
 // @updateURL    https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
 // @downloadURL  https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
-// @version      1.0.1
+// @version      1.0.2
 // @description  A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
 // @description:de Eine übersichtlichere MyJDownloader-Oberfläche mit Hell- und Dunkelmodus, anpassbaren Spaltenbreiten und besser lesbaren Download- und Entpackanzeigen.
 // @match        https://my.jdownloader.org/*
@@ -32,7 +32,89 @@
         return;
     }
 
-    document.documentElement.dataset.mjdUserscriptVersion = '1.0.1';
+    document.documentElement.dataset.mjdUserscriptVersion = '1.0.2';
+
+    // One bounded view refresh after the native add-links action, never a page reload.
+    installLinkCollectorRefresh();
+    function installLinkCollectorRefresh() {
+        let pending = null;
+        let timer = null;
+        let navigating = false;
+        const dialogSelector = '.gwt-PopupPanel, .gwt-DialogBox, [role="dialog"]';
+        const visible = element => !!element && element.isConnected &&
+            element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
+        const inCollector = () => location.hash === '#webinterface:links';
+        const stop = () => {
+            pending = null;
+            clearTimeout(timer);
+            timer = null;
+        };
+        const navigation = className => Array.from(document.querySelectorAll(
+            '#mainnav a.' + className)).find(visible);
+        const hasDialog = () => Array.from(document.querySelectorAll(dialogSelector)).some(visible);
+        const editing = () => document.activeElement?.matches(
+            'input, textarea, select, [contenteditable="true"], [contenteditable=""]');
+
+        function check() {
+            const request = pending;
+            if (!request) return;
+            if (!inCollector() || Date.now() - request.started > 15000) return stop();
+            // Do not interrupt dialogs, text entry or a hidden/background page.
+            if (Date.now() - request.started < 2000 || visible(request.dialog) ||
+                hasDialog() || editing() || document.hidden) {
+                timer = setTimeout(check, 200);
+                return;
+            }
+            const downloads = navigation('downloadshub');
+            const collector = navigation('linkcollectorhub');
+            if (!downloads || !collector) return stop();
+            pending = null;
+            navigating = true;
+            downloads.click();
+            navigating = false;
+            // Native navigation is asynchronous; return only from our own Downloads view.
+            const started = Date.now();
+            function returnToCollector() {
+                if (!request.returnAllowed) return;
+                if (Date.now() - started > 1500 || hasDialog() || editing() || document.hidden) return;
+                if (location.hash === '#webinterface:downloads') {
+                    const target = navigation('linkcollectorhub');
+                    if (target) {
+                        navigating = true;
+                        target.click();
+                        navigating = false;
+                    }
+                    return;
+                }
+                if (!inCollector()) return;
+                timer = setTimeout(returnToCollector, 50);
+            }
+            timer = setTimeout(returnToCollector, 150);
+            returnRequest = request;
+        }
+
+        let returnRequest = null;
+        document.addEventListener('click', event => {
+            if (navigating || !(event.target instanceof Element)) return;
+            if (event.target.closest('#mainnav a')) {
+                if (returnRequest) returnRequest.returnAllowed = false;
+                stop();
+                return;
+            }
+            const button = event.target.closest('button');
+            if (!button || button.disabled || !inCollector()) return;
+            const dialog = button.closest(dialogSelector);
+            const heading = dialog?.querySelector('h1, h2, .Caption')?.textContent?.trim() || '';
+            if (!/^(Links analysieren und hinzufügen|Analyze and add links|Analyse and add links)$/i.test(heading)) return;
+            if (!/^(Weiter|Continue|Add links)$/i.test(button.textContent.trim())) return;
+            const links = dialog.querySelector('textarea');
+            if (!links?.value.trim()) return;
+            stop();
+            pending = { dialog, started: Date.now(), returnAllowed: true };
+            timer = setTimeout(check, 2000);
+        }, true);
+        window.addEventListener('pagehide', stop);
+    }
 
     const THEME_KEY = 'mjd-layout-theme';
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');

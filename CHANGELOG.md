@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 — 2026-10-04
+
+- Refresh LinkGrabber once after submitting text links, using native view navigation instead of reloading the page.
+- Avoid interrupting open dialogs, editing, background tabs and user navigation; expire pending refreshes after 15 seconds.
+- This is a display workaround only; no links are resubmitted and no downloads are started.
+
 ## 1.0.1 — 2026-10-03
 
 - Added German name and description metadata for German-language userscript searches.

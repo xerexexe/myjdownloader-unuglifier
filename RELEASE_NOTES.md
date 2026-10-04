@@ -1,6 +1,6 @@
-# MyJDownloader UnUglifier 1.0.1
+# MyJDownloader UnUglifier 1.0.2
 
-Added German name and description metadata so the script can appear in German-language userscript searches. English remains the default language and the name is unchanged. No interface or download-handling behavior changed.
+Refresh LinkGrabber once about two seconds after submitting text links through the native add-links dialog. The workaround briefly switches native views, without a page reload, resubmitting links or starting downloads. It waits for dialogs and text entry, cancels when the user leaves LinkGrabber, and expires after 15 seconds. Container-file drops and submissions from other apps are not detected. Slow link analysis and stale footer totals may still need a manual refresh.
 
 ## Install
 
