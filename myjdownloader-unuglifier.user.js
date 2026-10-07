@@ -8,7 +8,7 @@
 // @supportURL   https://github.com/xerexexe/myjdownloader-unuglifier/issues
 // @updateURL    https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
 // @downloadURL  https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
-// @version      1.0.2
+// @version      1.0.3
 // @description  A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
 // @description:de Eine übersichtlichere MyJDownloader-Oberfläche mit Hell- und Dunkelmodus, anpassbaren Spaltenbreiten und besser lesbaren Download- und Entpackanzeigen.
 // @match        https://my.jdownloader.org/*
@@ -32,7 +32,7 @@
         return;
     }
 
-    document.documentElement.dataset.mjdUserscriptVersion = '1.0.2';
+    document.documentElement.dataset.mjdUserscriptVersion = '1.0.3';
 
     // One bounded view refresh after the native add-links action, never a page reload.
     installLinkCollectorRefresh();
@@ -40,6 +40,38 @@
         let pending = null;
         let timer = null;
         let navigating = false;
+        let notice = null;
+        let noticeTimer = null;
+        GM_addStyle(`
+            #mjd-link-refresh-notice {
+                position: fixed; right: 20px; bottom: 72px; z-index: 2147483000;
+                box-sizing: border-box; max-width: min(380px, calc(100vw - 32px));
+                padding: 12px 16px; border: 1px solid var(--mjd-border, #cbd5e1);
+                border-left: 4px solid var(--mjd-accent, #f2b800); border-radius: 10px;
+                background: var(--mjd-surface, #fff); color: var(--mjd-text, #17212b);
+                box-shadow: 0 4px 18px #0003; font: 13px/1.5 system-ui, sans-serif;
+                text-shadow: none !important; pointer-events: none;
+            }
+        `);
+        function clearNotice() {
+            clearTimeout(noticeTimer);
+            noticeTimer = null;
+            notice?.remove();
+            notice = null;
+        }
+        function showNotice(text, dismissAfter = 0) {
+            clearTimeout(noticeTimer);
+            if (!notice?.isConnected) {
+                notice = document.createElement('div');
+                notice.id = 'mjd-link-refresh-notice';
+                notice.setAttribute('role', 'status');
+                notice.setAttribute('aria-live', 'polite');
+                notice.setAttribute('aria-atomic', 'true');
+                (document.body || document.documentElement).appendChild(notice);
+            }
+            if (notice.textContent !== text) notice.textContent = text;
+            if (dismissAfter) noticeTimer = setTimeout(clearNotice, dismissAfter);
+        }
         const dialogSelector = '.gwt-PopupPanel, .gwt-DialogBox, [role="dialog"]';
         const visible = element => !!element && element.isConnected &&
             element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
@@ -48,6 +80,7 @@
             pending = null;
             clearTimeout(timer);
             timer = null;
+            clearNotice();
         };
         const navigation = className => Array.from(document.querySelectorAll(
             '#mainnav a.' + className)).find(visible);
@@ -58,10 +91,19 @@
         function check() {
             const request = pending;
             if (!request) return;
-            if (!inCollector() || Date.now() - request.started > 15000) return stop();
+            if (!inCollector()) return stop();
+            if (Date.now() - request.started > 15000) {
+                stop();
+                showNotice('Automatische Aktualisierung übersprungen. Bitte bei Bedarf die Ansicht wechseln.', 4000);
+                return;
+            }
+            const seconds = Math.ceil((2000 - (Date.now() - request.started)) / 1000);
             // Do not interrupt dialogs, text entry or a hidden/background page.
             if (Date.now() - request.started < 2000 || visible(request.dialog) ||
                 hasDialog() || editing() || document.hidden) {
+                showNotice(seconds > 0
+                    ? `Linksammler wird in ${seconds} ${seconds === 1 ? 'Sekunde' : 'Sekunden'} aktualisiert …`
+                    : 'Aktualisierung wartet, bis die Ansicht frei ist …');
                 timer = setTimeout(check, 200);
                 return;
             }
@@ -69,24 +111,31 @@
             const collector = navigation('linkcollectorhub');
             if (!downloads || !collector) return stop();
             pending = null;
+            showNotice('Linksammler wird aktualisiert …');
             navigating = true;
             downloads.click();
             navigating = false;
             // Native navigation is asynchronous; return only from our own Downloads view.
             const started = Date.now();
             function returnToCollector() {
-                if (!request.returnAllowed) return;
-                if (Date.now() - started > 1500 || hasDialog() || editing() || document.hidden) return;
+                if (!request.returnAllowed) return clearNotice();
+                if (Date.now() - started > 1500 || hasDialog() || editing() || document.hidden) {
+                    showNotice('Aktualisierung unterbrochen. Bitte bei Bedarf zum Linksammler wechseln.', 4000);
+                    return;
+                }
                 if (location.hash === '#webinterface:downloads') {
                     const target = navigation('linkcollectorhub');
                     if (target) {
                         navigating = true;
                         target.click();
                         navigating = false;
+                        showNotice('Ansicht aktualisiert. Die Linkanalyse kann noch laufen.', 3500);
+                    } else {
+                        clearNotice();
                     }
                     return;
                 }
-                if (!inCollector()) return;
+                if (!inCollector()) return clearNotice();
                 timer = setTimeout(returnToCollector, 50);
             }
             timer = setTimeout(returnToCollector, 150);
@@ -111,7 +160,8 @@
             if (!links?.value.trim()) return;
             stop();
             pending = { dialog, started: Date.now(), returnAllowed: true };
-            timer = setTimeout(check, 2000);
+            showNotice('Linksammler wird in 2 Sekunden aktualisiert …');
+            timer = setTimeout(check, 200);
         }, true);
         window.addEventListener('pagehide', stop);
     }

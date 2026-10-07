@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3 — 2026-10-07
+
+- Added a light/dark-aware countdown and status notice for the automatic LinkGrabber refresh.
+- Show when refresh waits for dialogs or editing, is interrupted, or has been requested; do not imply link analysis is complete.
+
 ## 1.0.2 — 2026-10-04
 
 - Refresh LinkGrabber once after submitting text links, using native view navigation instead of reloading the page.
