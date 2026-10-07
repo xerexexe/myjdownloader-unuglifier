@@ -8,7 +8,7 @@
 // @supportURL   https://github.com/xerexexe/myjdownloader-unuglifier/issues
 // @updateURL    https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
 // @downloadURL  https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
-// @version      1.0.3
+// @version      1.0.4
 // @description  A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
 // @description:de Eine übersichtlichere MyJDownloader-Oberfläche mit Hell- und Dunkelmodus, anpassbaren Spaltenbreiten und besser lesbaren Download- und Entpackanzeigen.
 // @match        https://my.jdownloader.org/*
@@ -32,7 +32,7 @@
         return;
     }
 
-    document.documentElement.dataset.mjdUserscriptVersion = '1.0.3';
+    document.documentElement.dataset.mjdUserscriptVersion = '1.0.4';
 
     // One bounded view refresh after the native add-links action, never a page reload.
     installLinkCollectorRefresh();
@@ -42,19 +42,58 @@
         let navigating = false;
         let notice = null;
         let noticeTimer = null;
+        let placementTimer = null;
+        let emptyTarget = null;
         GM_addStyle(`
             #mjd-link-refresh-notice {
-                position: fixed; right: 20px; bottom: 72px; z-index: 2147483000;
-                box-sizing: border-box; max-width: min(380px, calc(100vw - 32px));
-                padding: 12px 16px; border: 1px solid var(--mjd-border, #cbd5e1);
-                border-left: 4px solid var(--mjd-accent, #f2b800); border-radius: 10px;
-                background: var(--mjd-surface, #fff); color: var(--mjd-text, #17212b);
-                box-shadow: 0 4px 18px #0003; font: 13px/1.5 system-ui, sans-serif;
+                position: fixed; z-index: 2147483000;
+                box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+                padding: 28px; border: 3px solid #a85b00; border-radius: 14px;
+                background: #ffc943 !important; color: #25200d !important;
+                box-shadow: 0 8px 30px #0004; font: 700 clamp(18px, 2.4vw, 26px)/1.45 system-ui, sans-serif;
+                text-align: center; overflow-wrap: anywhere;
                 text-shadow: none !important; pointer-events: none;
             }
+            .emptyListMessage.mjd-refresh-placeholder { visibility: hidden !important; }
         `);
+        function placeNotice() {
+            if (!notice?.isConnected) return;
+            const empty = inCollector() ? Array.from(document.querySelectorAll('.emptyListMessage'))
+                .find(element => element.isConnected && element.getClientRects().length > 0 &&
+                    (element === emptyTarget || getComputedStyle(element).visibility !== 'hidden')) : null;
+            if (emptyTarget !== empty) {
+                emptyTarget?.classList.remove('mjd-refresh-placeholder');
+                emptyTarget = empty;
+            }
+            const bounds = empty?.getBoundingClientRect();
+            if (bounds && bounds.width > 0 && bounds.height > 0) {
+                if (notice.parentElement !== document.body) document.body.appendChild(notice);
+                empty.classList.add('mjd-refresh-placeholder');
+                Object.assign(notice.style, {
+                    position: 'fixed', margin: '0', display: inCollector() ? 'flex' : 'none',
+                    left: bounds.left + 'px', top: bounds.top + 'px',
+                    width: bounds.width + 'px', height: bounds.height + 'px', transform: 'none'
+                });
+            } else {
+                // A prominent banner when packages already exist; never cover their rows.
+                const heading = document.querySelector('.listHeadingWrapper');
+                if (inCollector() && heading?.parentElement && notice.nextElementSibling !== heading)
+                    heading.before(notice);
+                Object.assign(notice.style, {
+                    position: heading ? 'relative' : 'fixed', display: inCollector() ? 'flex' : 'none',
+                    margin: heading ? '16px auto' : '0',
+                    left: heading ? 'auto' : '50%', top: heading ? 'auto' : '110px',
+                    width: 'min(650px, calc(100% - 32px))', height: 'auto',
+                    transform: heading ? 'none' : 'translateX(-50%)'
+                });
+            }
+            placementTimer = setTimeout(placeNotice, 200);
+        }
         function clearNotice() {
             clearTimeout(noticeTimer);
+            clearTimeout(placementTimer);
+            emptyTarget?.classList.remove('mjd-refresh-placeholder');
+            emptyTarget = null;
             noticeTimer = null;
             notice?.remove();
             notice = null;
@@ -70,6 +109,8 @@
                 (document.body || document.documentElement).appendChild(notice);
             }
             if (notice.textContent !== text) notice.textContent = text;
+            clearTimeout(placementTimer);
+            placeNotice();
             if (dismissAfter) noticeTimer = setTimeout(clearNotice, dismissAfter);
         }
         const dialogSelector = '.gwt-PopupPanel, .gwt-DialogBox, [role="dialog"]';

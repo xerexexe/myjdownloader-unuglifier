@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4 — 2026-10-07
+
+- Replace the empty “No Packages” panel temporarily with a prominent amber countdown and large, high-contrast text.
+- When packages exist, place the status above the list without covering rows; restore the native empty state after dismissal.
+
 ## 1.0.3 — 2026-10-07
 
 - Added a light/dark-aware countdown and status notice for the automatic LinkGrabber refresh.

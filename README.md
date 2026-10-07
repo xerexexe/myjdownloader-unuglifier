@@ -2,7 +2,7 @@
 
 A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
 
-**Version 1.0.3 · by Holger Teichmann · MIT License**
+**Version 1.0.4 · by Holger Teichmann · MIT License**
 
 [![Greasy Fork installs](https://img.shields.io/greasyfork/dt/598605?label=Greasy%20Fork%20installs)](https://greasyfork.org/en/scripts/598605-myjdownloader-unuglifier/stats)
 [![GitHub release downloads](https://img.shields.io/github/downloads/xerexexe/myjdownloader-unuglifier/total?label=GitHub%20release%20downloads)](https://github.com/xerexexe/myjdownloader-unuglifier/releases)
@@ -39,7 +39,7 @@ The badges above show Greasy Fork installation counts and GitHub release-asset d
 
 This refresh is a workaround for stale native lists, not a fix to MyJDownloader's backend. A slow link analysis may still finish after the single refresh. Footer totals may remain stale.
 
-A small, theme-aware status notice counts down to the refresh, indicates when it is waiting for a free view, and disappears automatically. It reports view refresh activity, not confirmed package arrival or completed link analysis.
+A prominent amber status panel replaces the empty “No Packages” area during the countdown, or appears above the list when packages already exist. It indicates when refresh is waiting and disappears automatically, restoring the native empty state. It reports view refresh activity, not confirmed package arrival or completed link analysis.
 
 ## ETA and extraction: important limitations
 

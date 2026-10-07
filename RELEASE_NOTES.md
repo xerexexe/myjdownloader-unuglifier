@@ -1,6 +1,6 @@
-# MyJDownloader UnUglifier 1.0.3
+# MyJDownloader UnUglifier 1.0.4
 
-Added a small, theme-aware countdown/status notice for the automatic LinkGrabber refresh. It counts down from two seconds, reports waiting or interruption, and disappears automatically. The notice does not claim that a package has arrived or that link analysis is complete.
+The countdown now temporarily replaces the empty “No Packages” panel with a prominent amber panel and large, high-contrast text. If packages already exist, it appears above the list without covering rows. It reports waiting or interruption, disappears automatically, and restores the native empty state. The notice does not claim that a package has arrived or that link analysis is complete.
 
 Refresh LinkGrabber once about two seconds after submitting text links through the native add-links dialog. The workaround briefly switches native views, without a page reload, resubmitting links or starting downloads. It waits for dialogs and text entry, cancels when the user leaves LinkGrabber, and expires after 15 seconds. Container-file drops and submissions from other apps are not detected. Slow link analysis and stale footer totals may still need a manual refresh.
 
