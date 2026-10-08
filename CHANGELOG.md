@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 — 2026-10-08
+
+- Keep LinkGrabber refresh on the selected device and collector view.
+- Support container selection and drag-and-drop in the native add-links dialog.
+- Stop checking and remove the countdown as soon as package names or link counts change.
+- Retry only while the list is unchanged; cancel on navigation or timeout.
+- Remove development diagnostics and old code annotations; shorten the documentation.
+
 ## 1.0.4 — 2026-10-07
 
 - Replace the empty “No Packages” panel temporarily with a prominent amber countdown and large, high-contrast text.
@@ -32,5 +40,3 @@ First public release of **MyJDownloader UnUglifier**.
 - Contained general-settings and system-information layouts.
 - Moved account actions closer to their headings, including HTTP/FTP authentication.
 - English project metadata, installation documentation and an MIT license with attribution to Holger Teichmann.
-
-Earlier 3.x numbers were private development versions, not public releases. Disable the old development script before installing this release.

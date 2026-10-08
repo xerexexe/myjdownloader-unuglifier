@@ -8,9 +8,9 @@
 // @supportURL   https://github.com/xerexexe/myjdownloader-unuglifier/issues
 // @updateURL    https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
 // @downloadURL  https://raw.githubusercontent.com/xerexexe/myjdownloader-unuglifier/main/myjdownloader-unuglifier.user.js
-// @version      1.0.4
-// @description  A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
-// @description:de Eine übersichtlichere MyJDownloader-Oberfläche mit Hell- und Dunkelmodus, anpassbaren Spaltenbreiten und besser lesbaren Download- und Entpackanzeigen.
+// @version      1.0.5
+// @description  Light and dark themes, resizable columns, readable ETA and extraction status for MyJDownloader.
+// @description:de Hell- und Dunkelmodus, anpassbare Spalten und gut lesbare Download- und Entpackanzeigen für MyJDownloader.
 // @match        https://my.jdownloader.org/*
 // @grant        GM_addStyle
 // @run-at       document-start
@@ -21,7 +21,7 @@
 (function boot() {
     'use strict';
 
-    // Bei document-start kann selbst das HTML-Wurzelelement noch fehlen.
+    // document-start can run before the root element exists.
     if (!document.documentElement) {
         const observer = new MutationObserver(() => {
             if (!document.documentElement) return;
@@ -32,18 +32,19 @@
         return;
     }
 
-    document.documentElement.dataset.mjdUserscriptVersion = '1.0.4';
+    document.documentElement.dataset.mjdUserscriptVersion = '1.0.5';
 
-    // One bounded view refresh after the native add-links action, never a page reload.
     installLinkCollectorRefresh();
     function installLinkCollectorRefresh() {
+
         let pending = null;
         let timer = null;
-        let navigating = false;
         let notice = null;
         let noticeTimer = null;
         let placementTimer = null;
         let emptyTarget = null;
+        const refreshDelays = [2000, 5000, 10000, 15000];
+
         GM_addStyle(`
             #mjd-link-refresh-notice {
                 position: fixed; z-index: 2147483000;
@@ -58,6 +59,15 @@
         `);
         function placeNotice() {
             if (!notice?.isConnected) return;
+            // Keep the notice outside GWT's managed layout.
+            if (notice.parentElement !== document.body) document.body.appendChild(notice);
+            if (hasDialog()) {
+                emptyTarget?.classList.remove('mjd-refresh-placeholder');
+                emptyTarget = null;
+                notice.style.display = 'none';
+                placementTimer = setTimeout(placeNotice, 200);
+                return;
+            }
             const empty = inCollector() ? Array.from(document.querySelectorAll('.emptyListMessage'))
                 .find(element => element.isConnected && element.getClientRects().length > 0 &&
                     (element === emptyTarget || getComputedStyle(element).visibility !== 'hidden')) : null;
@@ -75,16 +85,14 @@
                     width: bounds.width + 'px', height: bounds.height + 'px', transform: 'none'
                 });
             } else {
-                // A prominent banner when packages already exist; never cover their rows.
+
                 const heading = document.querySelector('.listHeadingWrapper');
-                if (inCollector() && heading?.parentElement && notice.nextElementSibling !== heading)
-                    heading.before(notice);
+                const top = heading?.getBoundingClientRect().bottom || 120;
                 Object.assign(notice.style, {
-                    position: heading ? 'relative' : 'fixed', display: inCollector() ? 'flex' : 'none',
-                    margin: heading ? '16px auto' : '0',
-                    left: heading ? 'auto' : '50%', top: heading ? 'auto' : '110px',
-                    width: 'min(650px, calc(100% - 32px))', height: 'auto',
-                    transform: heading ? 'none' : 'translateX(-50%)'
+                    position: 'fixed', display: inCollector() ? 'flex' : 'none', margin: '0',
+                    left: '50%', top: top + 12 + 'px',
+                    width: 'min(650px, calc(100vw - 32px))', height: 'auto',
+                    transform: 'translateX(-50%)'
                 });
             }
             placementTimer = setTimeout(placeNotice, 200);
@@ -116,95 +124,191 @@
         const dialogSelector = '.gwt-PopupPanel, .gwt-DialogBox, [role="dialog"]';
         const visible = element => !!element && element.isConnected &&
             element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
-        const inCollector = () => location.hash === '#webinterface:links';
+        const inCollector = () => location.hash === '#webinterface:links' ||
+            !!pending?.transition && location.hash === pending.transition.hash;
         const stop = () => {
+
+            // Only reset a route created by this refresh.
+            if (pending?.transition && location.hash === pending.transition.hash) {
+                try { history.replaceState(history.state, '', pending.scope); } catch (_) {}
+            }
             pending = null;
             clearTimeout(timer);
             timer = null;
             clearNotice();
         };
-        const navigation = className => Array.from(document.querySelectorAll(
-            '#mainnav a.' + className)).find(visible);
         const hasDialog = () => Array.from(document.querySelectorAll(dialogSelector)).some(visible);
         const editing = () => document.activeElement?.matches(
             'input, textarea, select, [contenteditable="true"], [contenteditable=""]');
+        function listSignature() {
+            const rows = Array.from(document.querySelectorAll('#gwtContent .listRow:not(.listLoadMoreAnchor)'))
+                // Expand buttons distinguish packages from child rows.
+                .filter(row => !!row.querySelector('.expandButton'));
+            const header = Array.from(document.querySelectorAll('#gwtContent .listHeader')).some(visible);
+            const empty = Array.from(document.querySelectorAll('.emptyListMessage'))
+                .some(element => element.isConnected && element.getClientRects().length > 0);
+            if (!header || (!rows.length && !empty)) return null;
+            const identities = rows.map(row => {
+                const cells = row.querySelectorAll(':scope > div:first-of-type > div');
+                // Ignore speed and ETA changes.
+                return (cells[1]?.textContent.trim() || '') + '|' +
+                    (cells[3]?.textContent.match(/\[(\d+)\]/)?.[1] || '');
+            }).sort().join('\n');
+            let hash = 2166136261;
+            for (let i = 0; i < identities.length; i++) hash = Math.imul(hash ^ identities.charCodeAt(i), 16777619);
+            return rows.length + ':' + (hash >>> 0);
+        }
+        function refreshCollector(request) {
+            request.attempts++;
+            request.deadline ??= Date.now() + 60000;
+            // Re-enter the collector presenter without changing the selected device.
+            request.transition = {
+                hash: '#webinterface:links:mjd-refresh-' + Date.now() + '-' + request.attempts,
+                stage: 'out', started: Date.now(), header: null
+            };
+
+            showNotice('Paketliste wird aktualisiert …');
+            location.hash = request.transition.hash;
+        }
+        function advanceTransition(request, signature) {
+            const transition = request.transition;
+            const elapsed = Date.now() - transition.started;
+            if (elapsed > 8000) {
+                stop();
+                showNotice('Listenaktualisierung nicht bestätigt. Bitte die Ansicht manuell prüfen.', 6000);
+                return;
+            }
+            if (transition.stage === 'out' && elapsed >= 800 && signature !== null) {
+                transition.stage = 'back';
+                transition.header = document.querySelector('#gwtContent .listHeader');
+                transition.started = Date.now();
+
+                location.hash = '#webinterface:links';
+            } else if (transition.stage === 'back' && elapsed >= 400 && signature !== null) {
+                const header = document.querySelector('#gwtContent .listHeader');
+                if (header && header !== transition.header && visible(header)) {
+                    request.transition = null;
+                    request.nextRefreshAt = Date.now() + refreshDelays[Math.min(request.attempts, refreshDelays.length - 1)];
+
+                }
+            }
+            timer = setTimeout(check, 200);
+        }
+        function finishWaiting() {
+            stop();
+            showNotice('Noch keine Änderung der Paketliste erkannt. Bitte Verarbeitung oder Filter prüfen.', 6000);
+        }
+        const containerDialogs = new WeakSet();
+        function isAddDialog(dialog) {
+            const heading = dialog?.querySelector('h1, h2, .Caption')?.textContent?.trim() || '';
+            return /^(Links analysieren und hinzufügen|Analyze and add links|Analyse and add links)$/i.test(heading);
+        }
+        function beginRefresh(dialog, waitForSubmit = false) {
+            const baseline = pending?.dialog === dialog ? pending.baseline : listSignature();
+            stop();
+            pending = {
+                dialog, started: Date.now(), queued: Date.now(), waitForSubmit, baseline,
+                scope: location.href, attempts: 0, deadline: null,
+                nextRefreshAt: Date.now() + 2000, transition: null
+            };
+
+            showNotice(waitForSubmit
+                ? 'Container ausgewählt. Nach dem Hinzufügen wird der Linksammler aktualisiert …'
+                : 'Linksammler wird in 2 Sekunden aktualisiert …');
+            timer = setTimeout(check, 200);
+        }
+
+        document.addEventListener('change', event => {
+            if (!(event.target instanceof Element) || !inCollector() ||
+                !event.target.matches('input[type="file"]')) return;
+            const dialog = event.target.closest(dialogSelector);
+            if (!isAddDialog(dialog)) return;
+            if (!event.target.files?.length) {
+                containerDialogs.delete(dialog);
+                if (pending?.dialog === dialog && pending.waitForSubmit) stop();
+                return;
+            }
+            containerDialogs.add(dialog);
+            beginRefresh(dialog, true);
+        }, true);
+        document.addEventListener('drop', event => {
+            if (!(event.target instanceof Element) || !inCollector() || !event.dataTransfer?.files?.length) return;
+            const dialog = event.target.closest(dialogSelector);
+            if (!isAddDialog(dialog)) return;
+            containerDialogs.add(dialog);
+            beginRefresh(dialog, true);
+        }, true);
 
         function check() {
             const request = pending;
             if (!request) return;
             if (!inCollector()) return stop();
-            if (Date.now() - request.started > 15000) {
+            if (request.waitForSubmit) {
+                if (Date.now() - request.queued > 120000) return stop();
+                if (visible(request.dialog)) {
+                    timer = setTimeout(check, 200);
+                    return;
+                }
+                request.waitForSubmit = false;
+                request.started = Date.now();
+                request.nextRefreshAt = Date.now() + 2000;
+
+            }
+            if (request.deadline !== null && Date.now() >= request.deadline) return finishWaiting();
+            if (request.deadline === null && Date.now() - request.started > 15000) {
                 stop();
                 showNotice('Automatische Aktualisierung übersprungen. Bitte bei Bedarf die Ansicht wechseln.', 4000);
                 return;
             }
-            const seconds = Math.ceil((2000 - (Date.now() - request.started)) / 1000);
-            // Do not interrupt dialogs, text entry or a hidden/background page.
-            if (Date.now() - request.started < 2000 || visible(request.dialog) ||
-                hasDialog() || editing() || document.hidden) {
-                showNotice(seconds > 0
-                    ? `Linksammler wird in ${seconds} ${seconds === 1 ? 'Sekunde' : 'Sekunden'} aktualisiert …`
-                    : 'Aktualisierung wartet, bis die Ansicht frei ist …');
+            if (hasDialog() || editing() || document.hidden) {
+                showNotice('Aktualisierung wartet, bis die Ansicht frei ist …');
                 timer = setTimeout(check, 200);
                 return;
             }
-            const downloads = navigation('downloadshub');
-            const collector = navigation('linkcollectorhub');
-            if (!downloads || !collector) return stop();
-            pending = null;
-            showNotice('Linksammler wird aktualisiert …');
-            navigating = true;
-            downloads.click();
-            navigating = false;
-            // Native navigation is asynchronous; return only from our own Downloads view.
-            const started = Date.now();
-            function returnToCollector() {
-                if (!request.returnAllowed) return clearNotice();
-                if (Date.now() - started > 1500 || hasDialog() || editing() || document.hidden) {
-                    showNotice('Aktualisierung unterbrochen. Bitte bei Bedarf zum Linksammler wechseln.', 4000);
-                    return;
-                }
-                if (location.hash === '#webinterface:downloads') {
-                    const target = navigation('linkcollectorhub');
-                    if (target) {
-                        navigating = true;
-                        target.click();
-                        navigating = false;
-                        showNotice('Ansicht aktualisiert. Die Linkanalyse kann noch laufen.', 3500);
-                    } else {
-                        clearNotice();
-                    }
-                    return;
-                }
-                if (!inCollector()) return clearNotice();
-                timer = setTimeout(returnToCollector, 50);
+            const signature = listSignature();
+            if (request.transition) return advanceTransition(request, signature);
+            if (request.baseline !== null && signature !== null && signature !== request.baseline) {
+
+                stop();
+                return;
             }
-            timer = setTimeout(returnToCollector, 150);
-            returnRequest = request;
+            const seconds = Math.max(0, Math.ceil((request.nextRefreshAt - Date.now()) / 1000));
+            if (seconds > 0 || signature === null) {
+                showNotice(request.attempts
+                    ? `Paket noch nicht sichtbar. Erneute Prüfung in ${seconds} Sekunden …`
+                    : `Linksammler wird in ${seconds} ${seconds === 1 ? 'Sekunde' : 'Sekunden'} aktualisiert …`);
+            } else if (request.attempts >= refreshDelays.length) {
+                return finishWaiting();
+            } else refreshCollector(request);
+            timer = setTimeout(check, 200);
         }
 
-        let returnRequest = null;
         document.addEventListener('click', event => {
-            if (navigating || !(event.target instanceof Element)) return;
+            if (!(event.target instanceof Element)) return;
             if (event.target.closest('#mainnav a')) {
-                if (returnRequest) returnRequest.returnAllowed = false;
                 stop();
                 return;
             }
             const button = event.target.closest('button');
             if (!button || button.disabled || !inCollector()) return;
             const dialog = button.closest(dialogSelector);
-            const heading = dialog?.querySelector('h1, h2, .Caption')?.textContent?.trim() || '';
-            if (!/^(Links analysieren und hinzufügen|Analyze and add links|Analyse and add links)$/i.test(heading)) return;
+            if (!isAddDialog(dialog)) return;
+            if (/^(Abbrechen|Cancel)$/i.test(button.textContent.trim())) {
+                containerDialogs.delete(dialog);
+                if (pending?.dialog === dialog) stop();
+                return;
+            }
             if (!/^(Weiter|Continue|Add links)$/i.test(button.textContent.trim())) return;
             const links = dialog.querySelector('textarea');
-            if (!links?.value.trim()) return;
-            stop();
-            pending = { dialog, started: Date.now(), returnAllowed: true };
-            showNotice('Linksammler wird in 2 Sekunden aktualisiert …');
-            timer = setTimeout(check, 200);
+            const files = Array.from(dialog.querySelectorAll('input[type="file"]')).some(input => input.files?.length);
+            if (!links?.value.trim() && !files && !containerDialogs.has(dialog)) return;
+            containerDialogs.delete(dialog);
+            beginRefresh(dialog);
         }, true);
-        window.addEventListener('pagehide', stop);
+        window.addEventListener('pagehide', () => stop());
+        window.addEventListener('hashchange', () => {
+            if (pending && !inCollector()) stop();
+        });
     }
 
     const THEME_KEY = 'mjd-layout-theme';
@@ -248,7 +352,7 @@
     });
 
     GM_addStyle(`
-        /* Nativer Startbildschirm: verschwindet mit dem Originalelement. */
+        /* Loading screen */
         #gwtContent .mainLoadingSpinner {
             box-sizing: border-box !important;
             display: grid !important;
@@ -373,7 +477,7 @@
             padding-bottom: 142px !important;
         }
 
-        /* Einheitliche Seitenbreite */
+        /* Page width */
         .contentContainer {
             box-sizing: border-box !important;
             width: calc(100% - 32px) !important;
@@ -403,7 +507,7 @@
             background-color: rgba(255, 255, 255, 0.10) !important;
         }
 
-        /* Tabellenkopf: gleiche Spalten wie die Downloadzeilen */
+        /* Table headers */
         .listHeadingWrapper {
             box-sizing: border-box !important;
             left: 16px !important;
@@ -456,7 +560,7 @@
             display: none !important;
         }
 
-        /* Downloadzeilen */
+        /* Download rows */
         body:has(.downloadshub.current) .listRow,
         body:has(.linkcollectorhub.current) .listRow {
             box-sizing: border-box !important;
@@ -561,7 +665,7 @@
             outline-offset: 2px !important;
         }
 
-        /* Fortschritt und ETA bilden eine saubere, gemeinsame Komponente */
+        /* Progress and ETA */
         .listRow .GHS0TFHM2,
         .listRow progress + .progressBarLabel {
             box-sizing: border-box !important;
@@ -700,7 +804,7 @@
             line-height: 18px !important;
         }
 
-        /* Linksammler: eigenes Raster und kompakte, relevante Statistik */
+        /* LinkGrabber */
         body:has(.linkcollectorhub.current) .listHeader {
             grid-template-columns:
                 60px minmax(280px, 2.4fr) minmax(170px, 0.8fr) 130px
@@ -755,7 +859,7 @@
             text-align: center !important;
         }
 
-        /* Einstellungen: flexible Navigation und Formulare über die ganze Breite */
+        /* Settings */
         .GHS0TFHMT {
             box-sizing: border-box !important;
             display: grid !important;
@@ -846,7 +950,6 @@
             border-radius: 7px !important;
         }
 
-        /* Die Download-Statistik gehört nicht in die Einstellungsseiten. */
         body:has(.settingshub.current) {
             padding-bottom: 44px !important;
         }
@@ -871,7 +974,7 @@
             min-width: 0 !important;
         }
 
-        /* Untere Statusleiste */
+        /* Status bar */
         .listFooterBumper {
             height: 128px !important;
         }
@@ -960,7 +1063,7 @@
             height: 100% !important;
         }
 
-        /* 3.0: gemeinsame Farben und aktuelle, strukturell markierte Komponenten. */
+        /* Theme colors */
         :root {
             --mjd-download-grid: 52px minmax(260px, 1.6fr) 105px 72px 24px minmax(220px, 1.1fr) minmax(220px, 1fr) 18px 18px;
             --mjd-link-grid: 52px minmax(260px, 1.6fr) minmax(180px, 1fr) 105px 72px minmax(160px, 0.8fr) 18px 18px;
@@ -1048,7 +1151,7 @@
             border: 0 !important;
             box-shadow: none !important;
         }
-        /* GWT blendet die Überschrift bei einer Auswahl absichtlich aus. */
+        /* GWT hides the header during selection. */
         body:has(.downloadshub.current) .listHeader[style*="display: none"],
         body:has(.downloadshub.current) .listHeader[aria-hidden="true"],
         body:has(.linkcollectorhub.current) .listHeader[style*="display: none"],
@@ -1118,7 +1221,6 @@
             opacity: 0.65;
         }
 
-        /* Auch Datei-Unterzeilen nutzen dasselbe Fortschrittslayout. */
         body:has(.downloadshub.current) .listRow .mjd-progress {
             display: grid !important;
             grid-template-columns: minmax(0, 1fr) auto !important;
@@ -1140,7 +1242,7 @@
         .eta-label::before { flex-shrink: 0; }
         .eta-label--extract::before { color: #182027 !important; }
 
-        /* Formulare, Datentabellen, Dropdowns und Dialoge in beiden Themes. */
+        /* Forms and dialogs */
         #gwtContent a:not(.gwt-Button):not(.expandButton), .gwt-PopupPanel a { color: var(--mjd-link) !important; }
         #gwtContent input:not([type="checkbox"]):not([type="radio"]):not([role="presentation"]),
         #gwtContent select, #gwtContent textarea,
@@ -1248,7 +1350,7 @@
         footer, footer a { color: #c6d9df !important; font-size: 10px !important; }
         footer .contentContainer { gap: 10px !important; }
 
-        /* 3.1: Dashboard und echte GWT-Dialoge, nicht nur deren äußere Hülle. */
+        /* Dashboard */
         body:has(.dashboardContainer), body:has(#mainContainer) { padding-bottom: 56px !important; }
         .dashboardContainer.row {
             display: grid !important;
@@ -1509,7 +1611,7 @@
         toggle.type = 'button';
         toggle.addEventListener('click', () => {
             themePreference = document.documentElement.dataset.mjdTheme === 'dark' ? 'light' : 'dark';
-            try { localStorage.setItem(THEME_KEY, themePreference); } catch (_) { /* Ohne Speicher bleibt die Auswahl für diesen Tab aktiv. */ }
+            try { localStorage.setItem(THEME_KEY, themePreference); } catch (_) {}
             applyTheme();
         });
         wrapper.appendChild(toggle);
@@ -1587,7 +1689,7 @@
         try {
             sessionStorage.setItem(EXTRACTION_CACHE_KEY, JSON.stringify(Array.from(activeExtractions.entries())));
         } catch (_) {
-            // Die Anzeige funktioniert auch, wenn der Browser Session Storage blockiert.
+
         }
     }
 
@@ -1666,13 +1768,13 @@
             const largeDownwardCorrection = difference < -Math.max(90, current * 0.45);
 
             if (largeDownwardCorrection) {
-                // Anfangs meldet JDownloader gelegentlich Stunden statt Minuten.
+                // Initial ETA values can be much higher than later samples.
                 corrected = parsedSeconds;
             } else if (difference < 0) {
-                // Sinkende Werte dürfen sich zügig, aber ohne sichtbare Sprünge annähern.
+
                 corrected = current + difference * 0.65;
             } else {
-                // Kurzzeitige Geschwindigkeitsabfälle lassen die native ETA stark hochspringen.
+                // Smooth spikes caused by short speed drops.
                 corrected = current + Math.min(difference * 0.20, 20);
             }
         }
@@ -1684,7 +1786,7 @@
 
     function collectStatus(row) {
         const columns = getRowColumns(row);
-        // Datei- und Paketnamen dürfen nicht als Entpackstatus interpretiert werden.
+        // File names are not extraction status.
         const statusCells = [columns[4], columns[5], columns[6]].filter(Boolean);
         const sources = statusCells.flatMap(cell => Array.from(cell.querySelectorAll('[title]:not(.eta-label)')))
             .map(element => element.getAttribute('title') || '')
@@ -1700,7 +1802,7 @@
             }
         }
 
-        // Die neue WebUI zeigt Download-ETA als zweite Zeile statt im Tooltip.
+        // ETA may be rendered as a second line rather than a tooltip.
         if (!rawEta && /\bdownload\b/i.test(sources.join(' ')) && !EXTRACT_PATTERN.test(statusText)) {
             const statusElement = columns[5]?.firstElementChild;
             const lines = Array.from(statusElement?.childNodes || [])
@@ -1783,8 +1885,7 @@
         const progressContainer = findProgressContainer(row);
         let label = row.querySelector('.eta-label');
 
-        // Bei eingeklappten Paketen bestätigt die WebUI den Archivstatus oft nicht.
-        // Ein alter Cache-Eintrag ist kein Beleg für einen aktuell laufenden Vorgang.
+        // A cached status alone does not confirm active extraction.
         if (status.uncertain && progressContainer) {
             if (!label) {
                 label = document.createElement('div');
@@ -1895,7 +1996,7 @@
             }
 
             if (group.childRows.length && rememberedIsValid) {
-                // Aufgeklappt und kein Teil mehr aktiv: der Entpackvorgang ist beendet.
+
                 forgetExtraction(packageKey);
             }
 
@@ -1954,7 +2055,6 @@
             attributeFilter: ['title', 'style']
         });
 
-        // Der Sekundentakt hält die Restzeit flüssig, auch wenn GWT stockend aktualisiert.
         window.setInterval(scheduleSync, 1000);
         window.addEventListener('resize', scheduleSync, { passive: true });
     }
@@ -1964,7 +2064,7 @@
     } else {
         start();
     }
-    // Flexible Spalten und klare Schrift – am Ende des vorhandenen Scripts einfügen.
+
     (function installFlexibleColumns() {
         const root = document.documentElement;
         if (!root) {
@@ -2031,10 +2131,7 @@
                 overflow-y: hidden !important;
                 scrollbar-width: none !important;
             }
-            /* Lesbarer Tabellenkopf statt einer nur 17px hohen Textzeile.
-               Höhe bleibt automatisch, damit umgebrochene Titel Platz haben.
-               Die vorhandene Geometrie-Synchronisierung misst diesen Container
-               und hält Liste, Auswahlleiste und Spaltengriffe darunter frei. */
+            /* Header height follows wrapped labels. */
             body:has(.downloadshub.current) #gwtContent .listHeadingWrapper,
             body:has(.linkcollectorhub.current) #gwtContent .listHeadingWrapper {
                 height: auto !important;
@@ -2456,7 +2553,7 @@
     })();
 
     GM_addStyle(`
-        /* Navigation rechts am Drei-Punkte-Menü; stabile Einstellungsnavigation. */
+        /* Navigation */
         html { scrollbar-gutter: stable !important; }
         header .navbarStatic { position: relative !important; }
         #dropDownMenuButton {
@@ -2497,7 +2594,7 @@
         }
         .GHS0TFHKT a > img { flex-shrink: 0 !important; }
 
-        /* Einstellungsseiten: gemeinsame Titel-/Aktionszeile statt Float-Inseln. */
+        /* Settings headings and actions */
         body:has(.settingshub.current) #gwtContent .GHS0TFHHT .buttonWrapper:has(> h1) {
             display: flex !important; flex-wrap: wrap !important; align-items: center !important;
             justify-content: flex-start !important; gap: 12px 20px !important;
@@ -2523,7 +2620,7 @@
             border: 0 !important; background: transparent !important;
             padding: 0 !important; margin: 0 !important;
         }
-        /* Accountheader und Zeilen erhalten exakt dasselbe Raster und dieselben Insets. */
+        /* Account table */
         body:has(.settingshub.current) #gwtContent .GHS0TFHCU .GHS0TFHPT {
             padding: 0 !important; overflow: hidden !important;
         }
@@ -2561,8 +2658,7 @@
         body:has(.settingshub.current) #gwtContent .GHS0TFHCU :is(.listHeader, .listRow > div:first-of-type) > br {
             display: none !important;
         }
-        /* Allgemein: Grid enthält auch hohe Systeminformationen ohne Clearfix.
-           Die Checkbox-Spalte bleibt sichtbar und alle Eingaben bleiben bedienbar. */
+        /* System information */
         body:has(.settingshub.current) #gwtContent .GHS0TFHM3 {
             display: grid !important; grid-template-columns: 36px minmax(160px, .9fr) 24px minmax(0, 1.8fr) !important;
             align-items: center !important; gap: 12px !important; padding: 12px !important; height: auto !important;
@@ -2622,7 +2718,7 @@
 `);
 
     GM_addStyle(`
-    /* Fortschrittszellen dürfen den Inhalt nicht auf 12px Höhe abschneiden. */
+    /* Progress cell height */
     body:has(.downloadshub.current) #gwtContent .listRow
     .mjd-row-shell > div:has(> .mjd-progress) {
         display: flex !important;
@@ -2685,7 +2781,7 @@
         min-height: 20px !important;
         line-height: 16px !important;
     }
-    /* Das 18px-Archivsymbol bekommt tatsächlich 20px freien Platz. */
+    /* Extraction icon */
     body:has(.downloadshub.current) #gwtContent .listRow
     .mjd-row-shell > div:nth-of-type(5) {
         display: flex !important;

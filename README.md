@@ -1,82 +1,60 @@
 # MyJDownloader UnUglifier
 
-A cleaner MyJDownloader interface with light and dark themes, resizable columns, and easier-to-read download and extraction status.
+Light and dark themes, resizable columns, readable ETA and extraction status for [MyJDownloader](https://my.jdownloader.org/).
 
-**Version 1.0.4 · by Holger Teichmann · MIT License**
+**Version 1.0.5 · Holger Teichmann · MIT License**
 
 [![Greasy Fork installs](https://img.shields.io/greasyfork/dt/598605?label=Greasy%20Fork%20installs)](https://greasyfork.org/en/scripts/598605-myjdownloader-unuglifier/stats)
 [![GitHub release downloads](https://img.shields.io/github/downloads/xerexexe/myjdownloader-unuglifier/total?label=GitHub%20release%20downloads)](https://github.com/xerexexe/myjdownloader-unuglifier/releases)
 
-An unofficial, client-side userscript for [MyJDownloader](https://my.jdownloader.org/). It improves the existing interface rather than replacing JDownloader or changing how downloads are handled.
-
 ## Install
 
-1. Use Tampermonkey in your browser.
-2. Disable earlier development versions of this script and overlapping MyJDownloader theme scripts. Do not run both versions together.
-3. Open [MyJDownloader UnUglifier on Greasy Fork](https://greasyfork.org/en/scripts/598605-myjdownloader-unuglifier), click the install button and confirm in Tampermonkey.
-4. Reload MyJDownloader.
+1. Install Tampermonkey.
+2. [Install the script from Greasy Fork](https://greasyfork.org/en/scripts/598605-myjdownloader-unuglifier).
+3. Disable older copies or overlapping theme scripts, then reload MyJDownloader.
 
-The script matches only `https://my.jdownloader.org/*` and requests only `GM_addStyle`.
+The script runs only on `https://my.jdownloader.org/*` and requires `GM_addStyle`.
 
-The [source code](https://github.com/xerexexe/myjdownloader-unuglifier) is maintained on GitHub. Greasy Fork automatically checks the `main` branch for updates. Copies installed from Greasy Fork receive updates through Greasy Fork; existing GitHub installations retain their GitHub update source.
-
-## Installation statistics
-
-The badges above show Greasy Fork installation counts and GitHub release-asset downloads separately. They are not unique-user or active-user counts and should not be added together. GitHub Raw downloads are not included. Statistics and badges may update with a delay. No tracking code is added to the userscript; the README badges are served by Shields.io.
+Source and updates are maintained on [GitHub](https://github.com/xerexexe/myjdownloader-unuglifier). Greasy Fork checks the `main` branch for updates. Installations from GitHub keep their GitHub update source.
 
 ## Features
 
-- Light and dark themes with a saved preference and a compact toggle.
-- Responsive download and LinkGrabber columns, with saved manual widths.
-- Drag a column divider to resize it; use arrow keys for fine adjustments. Double-click a divider to return to automatic sizing.
-- Taller, readable table headers and clearer text without dark-mode text shadows.
-- Improved dialogs, account-table alignment and settings layouts.
-- General settings and system information that contain their content instead of overflowing their rows.
-- Download ETA displayed without having to hover.
-- Separate extraction information when the page actually reports extraction activity. A completed download alone is not treated as active extraction.
-- Improved initial loading-screen styling.
-- One automatic LinkGrabber view refresh about two seconds after submitting text links through the native add-links dialog. It waits for dialogs and text entry to finish, cancels if you leave LinkGrabber, and expires after 15 seconds. It does not reload the page or start downloads. Container-file drops and links submitted by other apps are not detected.
+- Light/dark toggle with a saved preference.
+- Responsive tables and saved column widths. Drag a divider to resize, use arrow keys for fine adjustments, or double-click to reset.
+- Readable headers, progress bars, ETA and extraction status.
+- Layout fixes for dialogs, accounts, settings, system information and the loading screen.
+- Automatic LinkGrabber refresh after adding links or containers through the native dialog.
 
-This refresh is a workaround for stale native lists, not a fix to MyJDownloader's backend. A slow link analysis may still finish after the single refresh. Footer totals may remain stale.
+## LinkGrabber refresh
 
-A prominent amber status panel replaces the empty “No Packages” area during the countdown, or appears above the list when packages already exist. It indicates when refresh is waiting and disappears automatically, restoring the native empty state. It reports view refresh activity, not confirmed package arrival or completed link analysis.
+An amber countdown replaces “No Packages”, or appears above an existing list. The first refresh starts about two seconds after adding links. Container selection and drag-and-drop are supported in the native add-links dialog.
 
-## ETA and extraction: important limitations
+Refresh stays on the selected device and LinkGrabber view. If the list is unchanged, it retries up to three times. Once package names or link counts change, checking and the notice stop immediately.
 
-This script reads the status and timing information already exposed by the web interface. It does not request a more accurate ETA from JDownloader or accelerate backend updates.
+Open dialogs, text entry and background tabs pause the refresh. Leaving LinkGrabber cancels it. The script does not reload the page, resubmit links or start downloads.
 
-If the upstream page supplies a stale or missing ETA, the script cannot manufacture a reliable remaining time. A “running since” value measures elapsed time, not estimated completion. Extraction memory is local display state, not an independent measurement of backend activity.
+Links added by other apps are not detected. Visible list changes do not confirm completed link analysis, and footer totals may remain stale.
 
-## Language
+## Limitations
 
-English remains the default project language. German script-name and description metadata are also provided for discovery in German-language userscript listings; the name stays the same in both languages.
+ETA and extraction information come from the web interface. The script cannot correct missing or stale backend values; elapsed time is not an ETA. A finished download is not treated as active extraction.
 
-The script is not a full translation layer. Existing German and English labels from MyJDownloader remain unchanged. The added status and timing labels are currently German. Changing the theme does not change language settings.
+MyJDownloader uses generated GWT selectors. Site updates can break styling, and some narrow-window layouts may still need adjustments.
 
-## Privacy and safety
+Existing MyJDownloader labels keep their original language. Added status labels are currently German; German listing metadata is included, but the script is not a full translation.
 
-- Theme and column preferences are stored in browser storage.
-- Temporary extraction display state is stored in session storage.
-- No additional download-management API calls, telemetry, clipboard access or credential collection are introduced by this script.
-- Your userscript manager may check GitHub or Greasy Fork for script updates, depending on the installation source.
-- This repository contains the script and documentation—not personal screenshots, account details, device IDs or logs.
-- To undo the customization, disable the script and reload the page. Settings and downloads are not changed by removing it.
+## Privacy and statistics
 
-## Known limitations
+Theme and column preferences use browser storage. Temporary extraction display state uses session storage. The script adds no telemetry, clipboard access, credential collection or download-management API calls.
 
-- MyJDownloader uses generated GWT class names; upstream changes can break styling.
-- The dashboard theme shortcut may be misplaced or hidden in narrow windows.
-- The advanced-settings search toolbar can overflow in narrow windows.
-- Not every backend state or viewport has been verified. Check the layout on the live site after installation.
+The badges count Greasy Fork installs and GitHub release-asset downloads separately. They are not unique-user counts; GitHub Raw downloads are not included. Badges are served by Shields.io.
 
 ## Contributing
 
-Bug reports and improvements are welcome. Include the script version, browser, viewport size, affected page and a short reproduction. Remove names, account details, passwords, device IDs, addresses and other private information from screenshots or logs before posting them.
+For bug reports, include the script version, browser, affected page and reproduction steps. Remove private details from screenshots and logs.
 
-## License and attribution
+## License
 
-Copyright © 2026 Holger Teichmann. Released under the [MIT License](https://github.com/xerexexe/myjdownloader-unuglifier/blob/main/LICENSE).
+Copyright © 2026 Holger Teichmann. [MIT License](LICENSE). Keep the copyright and license notices when distributing the script.
 
-Keep the copyright and license notices when copying or distributing the script. A visible UI credit is appreciated but is not an additional license requirement.
-
-This project is not affiliated with or endorsed by JDownloader or AppWork. Their names, logos and original interface assets belong to their respective owners; this license covers this project's code and documentation.
+Unofficial community project, not affiliated with JDownloader or AppWork. Their names, logos and original interface assets remain theirs.
